@@ -1,0 +1,91 @@
+project:
+  type: book
+  preview:
+    port: 4201
+    browser: true
+  render:
+  - '*.md'
+  - '*.qmd'
+  - '!LICENSE.md'
+  - '!README.md'
+  output-dir: ../../output/r_lims_pres
+  post-render: _extensions/inbo/flandersqmd-book/filters/post_render.R
+execute:
+  echo: false
+  warnings: true
+  errors: true
+  message: true
+  freeze: auto
+  cache: false
+format:
+  flandersqmd-book-html: default
+lang: nl-BE
+flandersqmd:
+  coverdescription: Gemini cover op basis van prompt "maak een foto waar R logo's in erlemeyers vloeien in het kader van het gebruik van R in een lims systeem"
+  entity: INBO
+  level: 2
+  title: Gebruik van R samen met Lims
+  subtitle: Technische informatie
+  shorttitle: presentatie-r-lims
+  year: 2026
+  author:
+  - name:
+      given: Pieter
+      family: Verschelde
+    email: pieter.verschelde@inbo.be
+    orcid: 0000-0002-9199-421X
+    affiliation:
+    - Instituut voor Natuur- en Bosonderzoek (INBO)
+    corresponding: true
+  reviewer:
+  - name:
+      given: Gerrit
+      family: Genouw
+    email: gerrit.genouw@inbo.be
+    orcid: 0009-0001-3333-0079
+    affiliation:
+    - Instituut voor Natuur- en Bosonderzoek (INBO)
+  rightsholder:
+  - name:
+      given: Instituut voor Natuur- en Bosonderzoek (INBO)
+    email: info@inbo.be
+    ror: https://ror.org/00j54wy13
+  funder:
+  - name:
+      given: Instituut voor Natuur- en Bosonderzoek (INBO)
+    email: info@inbo.be
+    ror: https://ror.org/00j54wy13
+  community: inbo
+  public_report: false
+  colophon: false
+  floatbarrier: section
+  cover: cover.pdf
+book:
+  downloads: pdf
+  open-graph: true
+  body-footer: '{{< footer >}}'
+  navbar:
+    pinned: true
+    right:
+    - icon: mastodon
+      href: https://mastodon.online/&#64;inbo
+    - icon: facebook
+      href: https://www.facebook.com/INBOVlaanderen/
+    left:
+    - text: Cover
+      file: index.md
+    - text: Aanbevelingen
+      file: aanbevelingen.md
+    - text: Inleiding
+      file: inleiding.qmd
+  chapters:
+  - index.md
+  - abstract.md
+  - inleiding.qmd
+  - implementatie.qmd
+  - voordelen_nadelen.qmd
+  - basis_voor_discussie.qmd
+  - referenties.md
+  sidebar:
+    logo: cover.png
+bibliography: references.bib

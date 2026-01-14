@@ -1,0 +1,25 @@
+# Voordelen en nadelen
+
+## Voordelen
+
+### Meer in eigen handen
+
+
+## Nadelen
+
+### Workaround
+
+- Communicatie R en LIMS
+    - Enkel via tabellen en files, geen rechtstreekse interface
+    - Omzeilen Labware veiligheden
+- Wat indien shellCommand niet meer kan
+    - bij upgrade labware8 al problemen
+
+### Debuggen
+
+- Kennis R en labware nodig
+- Voorlopig geen echte backup
+
+### Extra code
+
+### Geen customer support

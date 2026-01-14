@@ -1,0 +1,19 @@
+# Implementatie
+
+## Historiek
+
+<!-- lims basic no pemdas, beperkte mogelijkheden strings en data -->
+<!-- veel herhaalde code -> minimaliseren in lw8 implementatie -->
+
+## Basiswerking
+
+<!-- FLOWCHART toevoegen -->
+
+### Shellcommand
+
+### Specifieke tabellen: registratie en logging
+
+### Communicatie R en Lims
+
+<!-- Code tonen -->
+<!-- uitgebreid uitleggen -->

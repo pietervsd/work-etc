@@ -1,0 +1,9 @@
+# Discussie en tips
+
+## Communicatie tussen systemen
+
+- Heeft er iemand andere ideeën voor dergelijke implementatie?
+- Hoe Auth vermijden bij google sheets?
+- Ziet er iemand gevaren in deze manier van werken?
+
+## Onderhoud als ik weg zou vallen

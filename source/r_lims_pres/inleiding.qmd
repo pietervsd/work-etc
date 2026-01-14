@@ -1,0 +1,66 @@
+
+# Inleiding
+
+## Wat is LIMS
+
+- Labo Informatie Management Systeem
+    - Voornamelijk beheer van labodata
+        - Bijhouden van stalen
+        - Stalen in meetbaches en platen zetten
+        - Resultaten veilig bewaren
+        - Overzicht stand van zaken
+    - kan nog veel meer (stock, offertes, archivering, ...)
+- Op INBO gebruiken we Labware 7 (op 29/01/26 wordt dit Labware 8)
+- Vrij open systeem:
+    - laat veel configuratie toe
+        - Interface
+        - Coderen in een Basic code dialect "Lims Basic"
+    - database volledig in onze handen (SQL Server)
+    
+<!-- flowchart lims: lims db -> lims interface -> lims -> toestellen -> files -> directory -> R -> lims -> R -->
+<!-- zie figuur vorige presentatie met R en lims data communicatie, hoort misschien meer bij implementatie -->
+
+## Waarom R in LIMS
+
+- Lims Basic is krachtig maar heel basic
+- Er moet heel veel geconfigureerd worden
+- Gebruik crystal reports vermijden
+    - Rapportagetool waar een kost aan vast hangt en niet open is
+- R is gemaakt om met data om te gaan:
+    - Rechtsreeks gebruik van datasets
+    - Grote berekeningtoolkit
+    - Statistische testen
+- R veel meer geschikt voor ingewikkeldere dataverwerking
+- Gemakkelijk versiebeheer via github
+    - privaat inbo/inbolimsintern package
+- Vertrouwdheid met R
+
+## Waarvoor gebruikt
+
+### Labware systeem zelf
+
+- Import gegevens
+    - Automatisch inlezen toestelgegevens
+- Kwaliteit
+    - Realtime controlekaarten
+    - Visualiseren van elementen tegenover elkaar
+    - Evaluatie van controlekaartgrenzen
+    - Resultaatoverzichten
+    - Statistische evaluatie duplostalen
+- Genetica
+    - Randomiseren van stalen op platen 
+    - Visualiseren van platen met extra informatie
+- Verwerken update requests
+    - bv.foute staalgegevens door de klant meegegeven
+
+<!-- Figuur controlekaart -->
+<!-- Figuur runchart -->
+<!-- Figuur duplo-analyse -->
+<!-- Figuur plaat -->
+
+### Data management en onderzoek
+
+- Speciale overzichtsaanvragen van klanten
+- Scripts voor bulk correcties
+- Workaround voor archieflabels te printen
+
