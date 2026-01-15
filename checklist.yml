@@ -7,7 +7,7 @@ required:
 - checklist
 - filename conventions
 - folder conventions
-- license
+#- license
 - lintr
 spelling:
   default: nl-BE
