@@ -17,6 +17,84 @@
         - Coderen in een Basic code dialect "Lims Basic"
     - database volledig in onze handen (SQL Server)
     
+```{r fig-rlimsflow}
+#| warning: FALSE
+#| out-width: 100%
+# Install the package if you haven't already
+# install.packages("DiagrammeR")
+library(DiagrammeR)
+library(DiagrammeRsvg)
+
+graph <- grViz("
+digraph flow_chart {
+  # 1. Use ortho splines for 90-degree angles and increase spacing
+  graph [layout = dot, rankdir = TB, nodesep = 1.0, ranksep = 0.8]
+
+  # --- Node Definitions ---
+  node [fontname = Helvetica, shape = box, style = filled, fillcolor = white]
+
+  # Main vertical column
+  node [group = 'mainflow']
+  LW_interface [label = 'Lims\nInterface']
+  R_intern [label = 'inbolimsintern', color = blue]
+
+  # Invisible Anchor for routing the left-side arrow
+  node [style = invis, label = '', width = 0, height = 0]
+  LeftAnchor
+
+  node [style = filled, group = ''] 
+  node [shape = circle]
+  Labo [label = 'Labo', color = '#C07090']
+  Klant [label = 'Klant', color = '#C07090']
+
+  node [shape = cylinder]
+  LIMSDB [label = 'LIMS DB']
+  LIMSDWH [label = 'LIMS DWH', color = '#C07090']
+
+  node [shape = box]
+  R_inbolims [label = 'inbolims', color = blue]
+  Reports [label = 'Kwaliteit+\nOverzichten']
+  Meettoestel [label = 'Meettoestel', color = '#C07090']
+
+  # --- Ranking & Alignment ---
+  # Place the anchor to the left of Labo
+  {rank = same; LeftAnchor; Labo; LW_interface; LIMSDB}
+  
+  # Structural Spacing
+  LeftAnchor -> Labo [style = invis, minlen = 1]
+  Labo -> LW_interface [style = invis, minlen = 1]
+  
+  {rank = same; R_intern; R_inbolims}
+
+  # --- Edge Definitions ---
+  
+  # 2. THE BYPASS ROUTE: Force the arrow through the LeftAnchor
+  # This pulls the 'Reports -> Labo' line to the far left
+  Reports:w -> Labo
+  
+  # 3. VERTICAL STACK (Aligned under each other)
+  LW_interface -> R_intern [dir = both, color = blue, weight = 10]
+  
+  # 4. PROTECT TOP RANK (No vertical pull)
+  LW_interface -> Labo [dir = both, color = red, constraint = false]
+  
+  # 5. Rest of the Logic
+  LW_interface -> LIMSDB [dir = both]
+  R_intern -> Meettoestel [dir = both, color = blue]
+  R_intern -> Reports [dir = both, color = blue]
+  R_intern -> LIMSDB [dir = both, color = blue]
+  
+  LIMSDB -> LIMSDWH [weight = 5]
+  LIMSDWH -> R_inbolims 
+  LIMSDWH -> Klant [style = dashed, color = red]
+  R_inbolims -> Klant [color = blue]
+}
+", width = 800, height = 800)
+export_svg(graph) %>% charToRaw() %>% rsvg::rsvg_png("media/flowchart.png")
+knitr::include_graphics("media/flowchart.png")
+```
+
+    
 <!-- flowchart lims: lims db -> lims interface -> lims -> toestellen -> files -> directory -> R -> lims -> R -->
 <!-- zie figuur vorige presentatie met R en lims data communicatie, hoort misschien meer bij implementatie -->
 
