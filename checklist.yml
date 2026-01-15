@@ -14,4 +14,4 @@ spelling:
   ignore:
   - .github
   - LICENSE.md
-pak: []
+pak: pdftools
