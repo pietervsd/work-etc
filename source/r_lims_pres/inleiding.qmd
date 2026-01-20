@@ -1,4 +1,3 @@
-
 # Inleiding
 
 ## Wat is LIMS
@@ -13,128 +12,184 @@
 - Op INBO gebruiken we Labware 7 (op 29/01/26 wordt dit Labware 8)
 - Vrij open systeem:
     - laat veel configuratie toe
-        - Interface
+        - Grafische Interface
         - Coderen in een Basic code dialect "Lims Basic"
     - database volledig in onze handen (SQL Server)
-    
-```{r fig-rlimsflow}
-#| warning: FALSE
-#| out-width: 100%
-# Install the package if you haven't already
-# install.packages("DiagrammeR")
+
+
+```{r fig-limsdiagram}
+#| fig-cap: 'Overzicht hoofdcomponenten laboflow'
 library(DiagrammeR)
 library(DiagrammeRsvg)
 
-graph <- grViz("
-digraph flow_chart {
-  # 1. Use ortho splines for 90-degree angles and increase spacing
-  graph [layout = dot, rankdir = TB, nodesep = 1.0, ranksep = 0.8]
-
-  # --- Node Definitions ---
-  node [fontname = Helvetica, shape = box, style = filled, fillcolor = white]
-
-  # Main vertical column
-  node [group = 'mainflow']
-  LW_interface [label = 'Lims\nInterface']
-  R_intern [label = 'inbolimsintern', color = blue]
-
-  # Invisible Anchor for routing the left-side arrow
-  node [style = invis, label = '', width = 0, height = 0]
-  LeftAnchor
-
-  node [style = filled, group = ''] 
-  node [shape = circle]
-  Labo [label = 'Labo', color = '#C07090']
-  Klant [label = 'Klant', color = '#C07090']
-
-  node [shape = cylinder]
-  LIMSDB [label = 'LIMS DB']
-  LIMSDWH [label = 'LIMS DWH', color = '#C07090']
-
-  node [shape = box]
-  R_inbolims [label = 'inbolims', color = blue]
-  Reports [label = 'Kwaliteit+\nOverzichten']
-  Meettoestel [label = 'Meettoestel', color = '#C07090']
-
-  # --- Ranking & Alignment ---
-  # Place the anchor to the left of Labo
-  {rank = same; LeftAnchor; Labo; LW_interface; LIMSDB}
+g <-
+grViz("
+digraph LIMS_Eenvoudig_Gealigneerd {
+  # Layout instellingen voor een natuurlijke flow van links naar rechts
+  graph [layout = dot, rankdir = LR, splines = ortho, nodesep = 0.6, ranksep = 1.0, fontsize = 22]
   
-  # Structural Spacing
-  LeftAnchor -> Labo [style = invis, minlen = 1]
-  Labo -> LW_interface [style = invis, minlen = 1]
-  
-  {rank = same; R_intern; R_inbolims}
+  node [shape = rectangle, style = filled, fontname = 'Arial', fontsize = 22]
+  edge [color = '#555555', penwidth = 1.2, fontname = 'Arial', fontsize = 16]
 
-  # --- Edge Definitions ---
+  # --- KOLOM 1: INPUT (Alleen hier rank = same) ---
+  { rank = same; START; A; }
+
+  # Blokje voor Aanvraag
+  subgraph cluster_aanvraag {
+    label = 'Aanvraagfase'; style = dashed; color = '#7f8c8d'; fontcolor = '#7f8c8d'; margin = 20;
+    START [label = 'Aanvraag', fillcolor = '#fdfefe', style = 'filled']
+  }
+
+  # Blokje voor Veldwerk
+  subgraph cluster_0 {
+    label = 'Veldwerk'; style = dashed; color = '#3498db'; fontcolor = '#3498db'; margin = 20;
+    A [label = 'Staalname', fillcolor = '#ebf5fb']
+  }
+
+  # --- LIMS CORE SYSTEM (De 5 gevraagde blokken) ---
+  subgraph cluster_1 {
+    label = 'LIMS System'; style = filled; color = '#27ae60'; fillcolor = '#f1f9f5'; margin = 30;
+
+    CONPROJ [label = 'Contract | Project', fillcolor = '#eafaf1']
+    REG     [label = 'Staalregistratie', fillcolor = '#eafaf1']
+    BATCH   [label = 'Batch', fillcolor = '#d5f5e3', penwidth = 1.5]
+    REVIEW  [label = 'Kwaliteitscontrole', fillcolor = '#eafaf1']
+    AUDIT   [label = 'Audit log', shape = none, fontcolor = '#7f8c8d', fontsize = 22]
+    
+    # Interne flow
+    CONPROJ -> REG
+    REG -> BATCH [label = ' Groeperen']
+    BATCH -> REVIEW [dir = both, label = ' Resultaten / Heranalyse']
+    REVIEW -> AUDIT [style = dotted, arrowhead = none]
+  }
+
+  # --- EXTERNE ELEMENTEN ---
+  DEVICE [label = 'Meettoestel', shape = box3d, fillcolor = '#eeeeee']
+  VAL    [label = 'Validatie', fillcolor = '#f9e79f', color = '#f1c40f']
+  ACC    [label = 'Accreditatie\n(ISO 17025)', shape = cylinder, fillcolor = '#f4f6f7']
+
+  subgraph cluster_2 {
+    label = 'Rapportage'; style = dashed; color = '#e67e22'; fontcolor = '#e67e22'; margin = 20;
+    DWH [label = 'Data warehouse', fillcolor = '#fef5e7']
+  }
+
+  # --- CONNECTIES ---
+  START -> CONPROJ [label = '']
+  A -> REG [label = 'Fysiek monster', color = '#3498db']
   
-  # 2. THE BYPASS ROUTE: Force the arrow through the LeftAnchor
-  # This pulls the 'Reports -> Labo' line to the far left
-  Reports:w -> Labo
+  # Connectie met extern toestel
+  BATCH -> DEVICE [dir = both, label = '']
   
-  # 3. VERTICAL STACK (Aligned under each other)
-  LW_interface -> R_intern [dir = both, color = blue, weight = 10]
+  # Flow naar output
+  REVIEW -> VAL [label = '']
+  VAL -> DWH [label = 'Vrijgave']
   
-  # 4. PROTECT TOP RANK (No vertical pull)
-  LW_interface -> Labo [dir = both, color = red, constraint = false]
-  
-  # 5. Rest of the Logic
-  LW_interface -> LIMSDB [dir = both]
-  R_intern -> Meettoestel [dir = both, color = blue]
-  R_intern -> Reports [dir = both, color = blue]
-  R_intern -> LIMSDB [dir = both, color = blue]
-  
-  LIMSDB -> LIMSDWH [weight = 5]
-  LIMSDWH -> R_inbolims 
-  LIMSDWH -> Klant [style = dashed, color = red]
-  R_inbolims -> Klant [color = blue]
+  # Externe controle
+  ACC -> REVIEW [style = dashed, dir = both, label = 'Check']
 }
-", width = 800, height = 800)
-export_svg(graph) %>% charToRaw() %>% rsvg::rsvg_png("media/flowchart.png")
-knitr::include_graphics("media/flowchart.png")
+",
+height = 600, width = 1000)
+
+export_svg(g) %>% charToRaw() %>% rsvg::rsvg_png("media/flowchart_lims.png")
+knitr::include_graphics("media/flowchart_lims.png")
 ```
 
-    
-<!-- flowchart lims: lims db -> lims interface -> lims -> toestellen -> files -> directory -> R -> lims -> R -->
-<!-- zie figuur vorige presentatie met R en lims data communicatie, hoort misschien meer bij implementatie -->
+
 
 ## Waarom R in LIMS
 
-- Lims Basic is krachtig maar heel basic
-- Er moet heel veel geconfigureerd worden
+- Labware Lims Basic is krachtig maar heel 'basic'
+    - bv. geen PEMDAS dus 3 + 4 * 2 = 14
+    - Veel loopen door dataset
+    - Beperkte set aan stringfuncties
+- Er moet heel veel geconfigureerd worden om alles naar zin te krijgen
 - Gebruik crystal reports vermijden
-    - Rapportagetool waar een kost aan vast hangt en niet open is
+    - Rapportagetool waar een kost aan vast hangt
+    - niet open
 - R is gemaakt om met data om te gaan:
     - Rechtsreeks gebruik van datasets
     - Grote berekeningtoolkit
     - Statistische testen
-- R veel meer geschikt voor ingewikkeldere dataverwerking
+- R veel geschikter voor ingewikkeldere dataverwerking
 - Gemakkelijk versiebeheer via github
     - privaat inbo/inbolimsintern package
 - Vertrouwdheid met R
 
 ## Waarvoor gebruikt
 
-### Labware systeem zelf
+### Import gegevens
 
-- Import gegevens
-    - Automatisch inlezen toestelgegevens
-- Kwaliteit
-    - Realtime controlekaarten
-    - Visualiseren van elementen tegenover elkaar
+```{r fig-limsmain}
+knitr::include_graphics("media/lims-mainscreen.png")
+
+```
+
+- De laboranten zetten alle importfiles in een globale map
+- De R routine zal al de files ophalen en parsen naar een tsv formaat
+- De verwerkte files worden in de juiste map gezet (specifieke batch)
+- De stalen worden door standaard lims 1 per 1 verwerkt
+    - Kan ook rechtstreeks via R, maar niet aangeraden
+    - De lims routines passen verschillende tabellen tegelijk aan
+    - De lims routines zorgen voor de historiek in auditeringstabellen
+
+### Kwaliteit
+
+- Controlekaarten
+    - Voor de laatste 30 punten voor analyse in actieve batch
+    - gegenereerd met 1 druk op de knop
+    - R berekent heel wat statistieken en genereert interactieve figuren
+
+```{r fig-limsqcchart}
+knitr::include_graphics("media/lims-controlekaart.png")
+
+```
+
+
+
+- Visualiseren van elementen tegenover elkaar
+    - bv ionenbalans
+    bv verschillende meetmethodes voor hetzelfde element
+
+```{r fig-limsionenbalans}
+knitr::include_graphics("media/lims-ionenbalans.png")
+
+```
+
+
+- Periodieke analyses
     - Evaluatie van controlekaartgrenzen
     - Resultaatoverzichten
     - Statistische evaluatie duplostalen
-- Genetica
-    - Randomiseren van stalen op platen 
-    - Visualiseren van platen met extra informatie
-- Verwerken update requests
-    - bv.foute staalgegevens door de klant meegegeven
+        - Deze worden via een template in Gsheets verder verwerkt 
+    
+```{r tbl-duploresults}
+#| tbl-cap: "Deeltje van duploanalysetabel"
+#| message: false
 
-<!-- Figuur controlekaart -->
-<!-- Figuur runchart -->
-<!-- Figuur duplo-analyse -->
-<!-- Figuur plaat -->
+df_dup <- readr::read_csv2("media/lims-voorbeeld-blindeval.csv")
+
+DT::datatable(df_dup |> dplyr::slice(29:38))
+
+```
+
+
+### Platen genetica
+
+- Randomiseren van stalen op platen 
+- Visualiseren van platen met extra informatie
+
+```{r fig-limsplatelayout}
+knitr::include_graphics("media/lims-platelayout.png")
+
+```
+
+
+### Update requests
+
+- Foutoplossing in data van klant
+    - Vaak monsternamelocatie, monsterdatum
+    - Regelmatig hun eigen staalnaam
+
 
 ### Data management en onderzoek
 
@@ -142,3 +197,7 @@ knitr::include_graphics("media/flowchart.png")
 - Scripts voor bulk correcties
 - Workaround voor archieflabels te printen
 
+### Rapportage naar wetenschappers
+
+- Gebeurt via het datawarehouse
+- Specifiek R package hiervoor: inbo/inbolims op github

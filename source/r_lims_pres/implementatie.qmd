@@ -5,15 +5,599 @@
 <!-- lims basic no pemdas, beperkte mogelijkheden strings en data -->
 <!-- veel herhaalde code -> minimaliseren in lw8 implementatie -->
 
-## Basiswerking
 
-<!-- FLOWCHART toevoegen -->
+## Informatieflow tussen lims en R
 
-### Shellcommand
+### R tools
 
-### Specifieke tabellen: registratie en logging
+- Gebruikt 2 R pakketten
+    - INBOLIMSINTERN 
+        - private github repository inbo/inbolimsintern
+        - Communicatie tussen LIMS DB en het Labo
+    - INBOLIMS
+        - publieke github repository  inbo/inbolims
+        - Communicatie tussen LIMS DWH en wetenschapper
+- Gebeurt via shell commands op de achtergrond
+- R gaat NIET zelf resultaten wegschrijven naar LIMS tabellen
+    - R kan data schrijven naar custom tabellen C_
+    - De gegevens hieruit kunnen de lims-functies dan gebruiken om de offici"ele tabellen te vullen
+    - De lims functies voorzien immers functionaliteit die ingewikkeld kan worden:
+        - Er worden veel meer tabellen geaffecteerd
+            - De databank is immers niet volledig genormeerd 
+        - Datums en statussen worden herberekend
+        - Automatisatieroutines en event triggers kunnen lopen
+        - De auditor kan de historiek bijhouden
 
-### Communicatie R en Lims
+```{r fig-rlimsflow}
+#| warning: FALSE
+#| out-width: 100%
+#| fig-cap: Diagram van de interactiestromen tussen LIMS en R
+# Install the package if you haven't already
+# install.packages("DiagrammeR")
+library(DiagrammeR)
+library(DiagrammeRsvg)
 
-<!-- Code tonen -->
-<!-- uitgebreid uitleggen -->
+graph <- grViz("
+digraph flow_chart {
+  # 1. Use ortho splines for 90-degree angles and increase spacing
+  graph [layout = dot, rankdir = TB, nodesep = 1.0, ranksep = 0.8]
+
+  # --- Node Definitions ---
+  node [fontname = Helvetica, shape = box, style = filled, fillcolor = white]
+
+  # Main vertical column
+  node [group = 'mainflow']
+  LW_interface [label = 'Lims\nInterface']
+  R_intern [label = 'inbolimsintern', color = blue, fillcolor = lightblue]
+
+  # Invisible Anchor for routing the left-side arrow
+  node [style = invis, label = '', width = 0, height = 0]
+  LeftAnchor
+
+  node [style = filled, group = ''] 
+  node [shape = circle]
+  Labo [label = 'Labo', color = '#C07090']
+  Klant [label = 'Klant', color = '#C07090']
+
+  node [shape = cylinder]
+  LIMSDB [label = 'LIMS DB']
+  LIMSDWH [label = 'LIMS DWH', color = '#C07090']
+
+  node [shape = box]
+  R_inbolims [label = 'inbolims', color = blue, fillcolor = lightblue, alpha = 0.4]
+  Reports [label = 'Kwaliteit+\nOverzichten']
+  Meettoestel [label = 'Meettoestel', color = '#C07090']
+  Plaatschema [label = 'Plaatschema', color = '#C07090']
+
+  # --- Ranking & Alignment ---
+  # Place the anchor to the left of Labo
+  {rank = same; LeftAnchor; Labo; LW_interface; LIMSDB}
+  
+  # Structural Spacing
+  LeftAnchor -> Labo [style = invis, minlen = 1]
+  Labo -> LW_interface [style = invis, minlen = 1]
+  
+ {rank = same;
+  Label[label = 'R interactie', shape = none, fontcolor = blue, fontsize = 16];
+  R_intern;
+  R_inbolims}
+
+  # --- Edge Definitions ---
+  
+  # 2. THE BYPASS ROUTE: Force the arrow through the LeftAnchor
+  # This pulls the 'Reports -> Labo' line to the far left
+  Reports:w -> Labo
+  
+  # 3. VERTICAL STACK (Aligned under each other)
+  LW_interface -> R_intern [ color = blue, weight = 10, label = 'SUB']
+  
+  # 4. PROTECT TOP RANK (No vertical pull)
+  LW_interface -> Labo [dir = both, color = red, constraint = false]
+  
+  # 5. Rest of the Logic
+  LW_interface -> LIMSDB [penwidth = 5, dir = both, label = 'LABWARE']
+  R_intern -> Meettoestel [dir = both, color = blue, penwidth = 3, label = 'FILE']
+  R_intern -> Reports [color = blue]
+  R_intern -> LIMSDB [color = blue, penwidth = 3, dir = both, label = 'DBI']
+  R_intern -> Plaatschema [color = blue]
+  Reports -> LW_interface [color  = darkgreen, style = 'dashed', label = 'RPT']
+  Plaatschema -> LW_interface [color  = darkgreen, style = 'dashed', label = '\nRPT']
+  
+  LIMSDB -> LIMSDWH [weight = 5]
+  LIMSDWH -> R_inbolims 
+  LIMSDWH -> Klant [style = dashed, color = red]
+  R_inbolims -> Klant [color = blue]
+  R_inbolims -> Label[style = 'invis', minlen = 0.1]
+  Label -> Klant[style = 'invis', minlen = 0.1]
+}
+", width = 900, height = 600)
+export_svg(graph) %>% charToRaw() %>% rsvg::rsvg_png("media/flowchart_flow.png")
+knitr::include_graphics("media/flowchart_flow.png")
+```
+
+
+### Laborant
+
+- De laborant komt niet rechtsteeks in contact met R
+    - Laborant klikt op een knop in de lims interface --> start subroutine
+    - Subroutine wordt uitgevoerd
+        - Lims context wordt opgehaald (actief project, batch, staal, ...)
+        - Gebruiker krijgt vragen via dialoogvensters
+        - R wordt op de achtergrond opgeroepen via een een shell command
+            - R kan alle tabellen lezen
+            - R schrijft (meestal) enkel data weg naar specifieke tabellen
+            - R schrijft ook loggegevens weg naar de databank
+        - De routine gaat dan verder met de door R weggeschreven data
+    - De laborant krijgt het resultaat in de interface of als weggeschreven file
+
+
+    
+<!-- flowchart lims: lims db -> lims interface -> lims -> toestellen -> files -> directory -> R -> lims -> R -->
+<!-- zie figuur vorige presentatie met R en lims data communicatie, hoort misschien meer bij implementatie -->
+
+## Technische implementatie
+
+### Flow in LIMS
+
+
+
+```{mermaid}
+graph TD
+
+    %% --- STIJL DEFINITIES ---
+    classDef default fill:#e1f5fe,stroke:#333,stroke-width:1px,color:#000,font-size:16px;
+    classDef sideNode fill:#ffffff,stroke:#333,stroke-width:1px,color:#111,font-size:14px,font-style:italic;
+
+    %% --- DE HOOFDLIJN (Verticaal) ---
+    Start(["Laborant drukt op knop<br/>Menu routine start"])
+    Sub["Subroutine start<br/>Context: Staal, Project, Batch, Test"]
+    C["Ophalen ODBC & Scriptnaam"]
+    D[/"Gebruiker geeft input via<br/>antwoorden en keuzes"/]
+    D2["call_id wordt aangemaakt"]
+    E["Systeem Voorbereiding"]
+    F["Progressiebar: pol C_RSCRIPT_LOG<br/>geef logging info door"]
+    G["Rscript shellcommand aanroep:<br/>scriptnaam, odbc, call_id, user"]
+    H[["R uitvoering"]]
+    I{"Controleer<br/>C_RSCRIPT_LOG"}
+    J["Succesmelding"]
+    K["Foutmelding + Log details"]
+    L[" Extra taken in script<br/>bv. Resultaten invoeren <br/> op uit tabel <br/>waar R naar schrijft"]
+    M(["Einde"])
+
+    %% Verticale verbindingen (Hoofdpad)
+    Start --> Sub
+    Sub --> C
+    C --> D
+    D --> D2
+    D2 --> E
+    E --> F
+    F --> G
+    G --> H
+    H --> I
+    I -- "OK" --> J
+    I -- "NOK" --> K
+    J --> L
+    K --> L
+
+    %% --- DE ZIJSTAPPEN ---
+    %% We groeperen ze in een subgraph zonder achtergrondkleur
+    subgraph DataSectie [" "]
+        E1[("Initieer entry in<br/>C_RSCRIPT_LOG (Status: U)")]
+        E2[("Schrijf parameters naar<br/>tabel C_RSCRIPT_ARGS")]
+        E3[/"Optioneel: schrijf bestanden<br/>(bv. SQL voor R)"/]
+    end
+
+    %% Zijwaartse verbindingen
+    %% Door deze pijlen apart te definiëren en 'linkStyle' te gebruiken,
+    %% houden we ze uit de hoofd-verticale flow.
+    E -.-> E1
+    E -.-> E2
+    E -.-> E3
+
+    %% --- STYLING TOEPASSEN ---
+    class E1,E2,E3 sideNode;
+    
+    %% Subgraph onzichtbaar maken
+    style DataSectie fill:none,stroke:none;
+```    
+
+
+### Codevoorbeeld
+
+```vba
+'**************************************************************************
+'** Subroutine = "MN_BM_QC_QC_CHARTS"
+'** Doelstelling: Maak controlekaarten op basis van de huidige batch of via een visuele workflow
+'** Werkwijze: maak een query en exportlocaties aan, schrijf de query weg als sql bestand. Laat R de controlekaartroutine uitvoeren
+'** Ingang: Batch menu (BM_BATCH_QC_QC_CHARTS)
+'**Input: actieve batch of VWF_QC_CTR_REALTIME
+'** Revisie:
+' 2024-08-05: aanpassing omgaan met mu zodat het ook op citrix nieuw werkt
+' 2024-09-18: aanpassing wegschrijfma
+' 24-Apr-2025	Patrick Bogaert		Specific config when executing in the web
+' 2025-05-08 Pieter Verschelde Enable interactive html reports
+' 2025-08-19: lims8 methode integreren, web integreren en ook VWF_QC_CTR_REALTIME deze routine laten gebruiken
+'**************************************************************************
+
+
+'# INIT
+productkeuze = EMPTY
+analysisName = EMPTY
+
+Rscript = GetConstant("REXEC")
+scriptfile = GetConstant("RSCRIPT_DIR") + GetConstant("RSCRIPT_SHEWHART_REALTIME")
+dbodbc = GetConstant("DBODBC")
+dbuid = GetConstant("DBUID")
+dbpwd = GetConstant("DBPWD")
+batchName = SELECT BATCH.NAME
+
+IF (IsEmpty(batchName) OR (enteredfromQCvwf = "T")) THEN'enteredfromQCvwf comes from VWF_QC_CTR_REALTIME
+	detailedselection = TRUE
+	'Haal de analyse op uit de volledige lijst van actieve analyses"
+	status = ClearArray("productarray")
+	productarray[1] = "VAST"
+	productarray[2] = "WATER"
+	productkeuze = SelectFromArray(productarray, "Kies het product")
+	IF (IsEmpty(productkeuze)) THEN
+		MsgBox("Verplicht een product te kiezen. Routine stopt.")
+		RETURN
+	ENDIF
+	
+	q = "SELECT NAME from ANALYSIS where GROUP_NAME = '" + productkeuze + "' and ACTIVE = 'T' group by NAME, GROUP_NAME order by GROUP_NAME, NAME"
+	status = SQL(q, "analysisArray")
+	status = ArrayConvertToSingleDim(analysisArray, "analysisArray", 1)
+	analysisName = SelectFromArray(analysisArray, "Selecteer de analyse")
+	IF (IsEmpty(analysisName)) THEN
+		MsgBox("verplicht een analyse te kiezen. Routine stopt.")
+		RETURN
+	ENDIF
+	
+	q = "select name from component where ANALYSIS = '" + analysisName + "' and C_QC = 'T' and VERSION = (select max(VERSION) from component where ANALYSIS = '" + analysisName + "')"
+	status = SQL(q, "compListArray")
+	latest = PromptForDateTime("Kies de maximale datum", DateTime())
+	earliest = OdbcDateTimeStamp(DateAdd(latest, -1461))
+	latest = OdbcDateTimeStamp(latest)
+	maxpoints = PromptForInteger(0, 200, 30, "Maximaal hoeveel punten in de kaart?")
+ELSE 
+	detailedselection = FALSE
+	'## Haal de bachanalyse op
+	q3 = "select  TOP(1) ANALYSIS from TEST where TEST.BATCH = '" + batchName + "'"
+	status = SQL(q3, "analysisArray")
+	analysisName = analysisArray[1,1]
+	latest = DateTime()
+	earliest = OdbcDateTimeStamp(DateAdd(latest, -1461))
+	latest = OdbcDateTimeStamp(latest)
+	
+	'## Haal de componenten op (C_QC moet op TRUE staan)
+	q = "select REPLACE(r.NAME, NCHAR(0x00B5), N'u') as NAME from test t"
+	q = q + " inner join sample s on t.sample_number = s.sample_number"
+	q = q + " inner join result r on r.TEST_NUMBER = t.TEST_NUMBER"
+	q = q + " inner join component c on c.ANALYSIS = r.ANALYSIS and c.NAME = r.NAME"
+	q = q + " where t.batch = '" + batchName + "'"
+	q = q + " and s.sample_type in ('CONTROL', 'BLANK', 'PRBLANCO')"
+	q = q + " and r.REPORTABLE in ( 'T', 'F')"
+	q = q + "    AND r.ENTERED_ON > " + earliest
+	q = q + "    AND r.ENTERED_ON < " + latest
+	q = q + " and c.C_QC = 'T'"
+	q = q + " and r.NUMERIC_ENTRY is not NULL"
+	q = q + " GROUP BY  r.NAME"
+	status = SQL(q, "compListArray")
+	
+	maxpoints = 30
+ENDIF
+
+'## Selecteer compomenten
+numSelections = MultiSelectFromArray(compListArray, "Welke componenten?", "compSelectArray", "T")
+IF (numSelections = 0) THEN
+	MsgBox("Geen componenten geselecteerd. Routine stopt.")
+	RETURN
+ENDIF
+
+'## Componenten selecteren
+compNames = "('" + ArrayToCSVString(compSelectArray, "','") + "')"
+Subroutine("FN_DATETIME_TXT")	'returns now en nowtxt
+jaar = "20" + Left(nowtxt, 2)
+
+'## Definieren exportfiles
+exportdir = GetConstant("DEFAULTDIR_LAB_GENERIC") + "\LIMS\CTR_REALTIME\" + jaar + "\" + analysisName + "\"
+status = DirExists(exportdir)
+IF (status = FALSE) THEN
+	jaardir = GetConstant("DEFAULTDIR_LAB_GENERIC") + "\LIMS\CTR_REALTIME\" + jaar
+	IF (Not(DirExists(jaardir))) THEN
+		status = DirNew(jaardir)
+		IF (Not(status)) THEN
+			MsgBox("Kritieke fout: Zorg dat het pad " + GetConstant("DEFAULTDIR_LAB_GENERIC") + "\LIMS\CTR_REALTIME\" + " bestaat en schrijfrechten heeft. Routine stopt.")
+			RETURN
+		ENDIF
+	ENDIF
+	status = DirNew(exportdir)
+ENDIF
+
+'## creeren query die R zal uitvoeren om de data binnen te halen (wordt uitgevoerd door R, niet door lims)
+qn = "select s.SAMPLE_NUMBER, s.TEXT_ID, s.SAMPLE_TYPE, s.SAMPLE_NAME "
+qn = qn + ", bo.BATCH, bo.ORDER_NUMBER, r.ANALYSIS, REPLACE(r.NAME,NCHAR(0x00B5), N'u') as NAME, r.ENTRY, r.ENTERED_ON, r.UNITS "
+qn = qn + ", ps.C_CERTIFIED_VALUE, ps.C_CERTIFIED_SD, ps.C_CTR_X, ps.C_CTR_SD, ps.PRODUCT, ps.VERSION, b.C_DATE_BATCHRUN " ' toegevoegd 2022-11-23: , b.C_DATE_BATCHRUN
+qn = qn + Chr(10) + " from result r "
+qn = qn + Chr(10) + " inner join test t on t.TEST_NUMBER = r.TEST_NUMBER"
+qn = qn + Chr(10) + " inner join sample s on s.SAMPLE_NUMBER = t.SAMPLE_NUMBER"
+qn = qn + Chr(10) + " inner join qc_samples qcs on qcs.NAME = s.SAMPLE_NAME"
+qn = qn + Chr(10) + " inner join batch_objects bo on bo.OBJECT_ID = t.TEST_NUMBER"
+qn = qn + Chr(10) + " inner join batch b on b.NAME = bo.BATCH" 'aanpassing 2022-11-23
+qn = qn + Chr(10) + " inner join (select name, max(version) as ProdVersion from PRODUCT group by NAME) tmp on tmp.NAME = s.PRODUCT"
+qn = qn + Chr(10) + " left join product_spec ps on ps.PRODUCT = s.PRODUCT and ps.VERSION = ProdVersion and s.PRODUCT_GRADE = ps.GRADE and ps.ANALYSIS = t.ANALYSIS and ps.COMPONENT = r.NAME"
+qn = qn + Chr(10) + " where t.ANALYSIS = '" + analysisName + "'"
+qn = qn + " and REPLACE(r.NAME, NCHAR(0x00B5), N'u') in " + compNames
+qn = qn + Chr(10) + " and r.ENTRY is not null and s.SAMPLE_TYPE is not null and s.SAMPLE_TYPE <> 'DUP' "
+qn = qn + Chr(10) + " and r.ENTERED_ON > " + earliest + "and r.ENTERED_ON <= " + latest
+qn = qn + Chr(10) + " and r.STATUS in ('E', 'M', 'A')"
+qn = qn + Chr(10) + " and ps.C_CTR_ADD = 'T'"
+
+operation = "open"
+waitFlag = "T"
+callid = GetIncrement("CALL_ID")
+
+qryfile = exportdir + analysisName + "_" + nowtxt + "_cid_" + callid + "_" + USER + ".SQL"
+htmlfile = exportdir + analysisName + "_" + nowtxt + "_cid_" + callid + "_" + USER + ".HTML"
+' parameters = scriptfile + " " + dbodbc + " " + dbuid + " " + dbpwd + " " + callid + " " + USER
+parameters = scriptfile + " " + dbodbc + " " + callid + " " + USER  'safer way without sending the db parameters
+
+
+'## Wegschrijven query als .SQL bestqnd
+status = FileNew(qryfile, "F")
+status = FileOpen(qryfile)
+status = FileWrite(qryfile, qn, "T")
+status = FileClose(qryfile)
+'status = WaitForFile(qryfile, 1)
+status = FileClose(qryfile)  '2 keer sluiten anders lijkt het niet te sluiten misschien dubbel geopend door flilenew, fileopen en filewrite?
+
+
+'## Add parameters in C_RSCRIPT_ARGS  en run on external R application
+sqlcode1 = "INSERT INTO C_RSCRIPT_ARGS (CALL_ID, CALL_FUN, ARG_NAME, VALUE) values(" + callid + ", 'ELC_QC_CHART', 'SQL_FILE', '" + qryfile + "')"
+sqlcode2 = "INSERT INTO C_RSCRIPT_ARGS (CALL_ID, CALL_FUN, ARG_NAME, VALUE) values(" + callid + ", 'ELC_QC_CHART', 'HTML_FILE', '" + htmlfile + "')"
+sqlcode3 = "INSERT INTO C_RSCRIPT_ARGS (CALL_ID, CALL_FUN, ARG_NAME, VALUE) values(" + callid + ", 'ELC_QC_CHART', 'USER', '" + USER + "')"
+sqlcode4 = "INSERT INTO C_RSCRIPT_ARGS (CALL_ID, CALL_FUN, ARG_NAME, VALUE) values(" + callid + ", 'ELC_QC_CHART', 'DATETIME', '" + now + "')"
+sqlcode5 = "INSERT INTO C_RSCRIPT_ARGS (CALL_ID, CALL_FUN, ARG_NAME, VALUE) values(" + callid + ", 'ELC_QC_CHART', 'MAX_POINTS', " + maxpoints + ")"
+
+status = SQL(sqlcode1, "emtpyArray")
+status = SQL(sqlcode2, "emtpyArray")
+status = SQL(sqlcode3, "emtpyArray")
+status = SQL(sqlcode4, "emtpyArray")
+status = SQL(sqlcode5, "emtpyArray")
+
+'start logging
+logmsg = "ELC QC Chart"
+Subroutine("FN_LOG_R_DB")
+
+IF (IsWeb()) THEN
+	timeout = 60
+	status = Subroutine("FN_EXEC_R_WEB")
+	
+	htmlString = FileContents(htmlfile)
+	MsgboxHtml(htmlString, 1600, 900)
+ELSE 
+	status = ShellCommand(Rscript, "open", "T", parameters)
+	logmsgadd = htmlfile
+	Subroutine("FN_CHECK_R_STATUS")
+ENDIF
+
+RETURN
+
+```
+## Flow in R
+
+### Schema
+
+
+- Rscript wordt vanuit Lims gerund met parameters:
+    - scriptnaam
+    - odbc naam
+    - call id
+    - lims-gebruiker
+- De scripts staan in de inst-map van het package onder lims_scripts
+    - bij het laden van Rscript worden de hashes vergeleken met de scripts in de lims directory
+    - indien anders, worden de bestaande gebackupped en de nieuwe er geplaatst
+- Structuur van het Rscript
+  - tidyverse en inbolimsintern worden geladen
+  - setupfunctie wordt gelopen (r_session_setup(commandArgs))
+      - connect to database (indien niet gelukt text log)
+      - start logging in database C_RSCRIPT_LOG write_db_log(msg, status)
+      - Lees de parameters in tabel C_RSCRIPT_ARGS voor de call_id
+      - Configureer pandoc_path Sys.setenv
+      - Return list
+          - conn: database connectie
+          - user_name: lims gebruikersnaam (voor loggen en filenames)
+          - call_id: identificatie van de aanvraag\
+          - params: dataset met alle parameters die in C_RSCRIPT_ARGS staan
+          - env: geeft aan welke omgeving (dev, uat, prd)
+  - Bij ieder einde van een grote stap woren loggegevens gezet in C_RSCRIPT_LOG
+         - write_db_log(msg, status) call_id en conn worden uit GlobalEnv genomen
+  - Op basis van de params wordt de data ingelezen
+      - params bevat soms ook een link naar een .sql bestand of naam van outputbestand
+  - Het script wordt doorlopen  
+  - Op het einde wordt nog een db_log geschreven met status 'C' of 'E'
+      - Lims zal dan op basis van die status acties ondernemen
+
+
+### Historiek
+
+De flow is misschien nog altijd niet ideaal, maar al veel beter dan vroeger:
+
+- Alle scripts werken nu op een gestandaardiseerde manier
+- Ieder script deed een aparte setup
+- Het db passwoord en gebruikersnaam staan nu in een .Renviron
+    - Vroeger werd dat met iedere request doorgezonden
+    - .Renviron is nog niet ge-encrypteerd maar is bitgecodeerd
+        - Ik zie voorlopig geen andere manier zonder gebruikersinteractie
+
+
+### Codevoorbeeld
+
+```{r limsvoorbeeld}
+#| echo: true
+#| eval: false
+
+##################################
+#ELC - Make QC chart html report
+##################################
+
+#// setup environment
+##=====================
+
+library(tidyverse)
+library(inbolimsintern)
+library(htmltools)
+fig_height <- 600
+
+#Haal argumenten op en initieer de R sessie
+args <- commandArgs(trailingOnly = TRUE)
+
+#Loop setup functie
+  #connect to database (indien niet gelukt text log)
+  # start logging in database C_RSCRIPT_LOG write_db_log(msg, status) #conn en call_id global
+  # Lees de parameters in C_RSCRIPT_ARGS
+  # Configureer pandoc_path Sys.setenv
+  # Return list(conn = conn, user_name = user_name, call_id = call_id, params = params, env = env)
+setup <- try(r_session_setup(args))
+
+if (inherits(setup, "try-error")) {
+  stop("probleem bij setup script")
+}
+
+#Kopieer gegevens naar global environment
+#
+invisible(list2env(setup, envir = .GlobalEnv))
+
+
+#// retrieve arguments
+##=====================
+
+e <- try({
+  maxpoints_orig <- 30 #indien max_points bestaat wordt dit overschreven door die waarde
+  sqlfile  <- try(dplyr::filter(params, ARG_NAME == "SQL_FILE") %>% pull(VALUE))
+  htmlfile <- try(dplyr::filter(params, ARG_NAME == "HTML_FILE") %>% pull(VALUE))
+  maxpoints <- try(dplyr::filter(params, ARG_NAME == "MAX_POINTS") %>% pull(VALUE) %>% unique() %>%  as.integer())
+  if (inherits(maxpoints, "try-error") | !length(maxpoints)) {
+    maxpoints <- maxpoints_orig
+  }
+  if (length(maxpoints) > 1) {
+    maxpoints <- max(maxpoints)
+  }
+})
+print(maxpoints)
+if (inherits(e, "try-error")) {
+  write_db_log(e, "E")
+  stop(e)
+}
+
+htmlrootshort <- substring(htmlfile,
+                           max(unlist(gregexpr("\\\\", htmlfile))) + 1,
+                           nchar(htmlfile) - 5) #+1 - 5 (zonder extensie)
+htmlpath <-  substring(htmlfile, 1, max(unlist(gregexpr("\\\\", htmlfile))))
+
+
+#// Import data
+##================
+
+write_db_log("start import data from db", "P")
+e <-
+  try(
+    alldata <- get_ELC_data(conn, sqlfile, keep = maxpoints)
+  )
+if (inherits(e, "try-error")) {
+  write_db_log(e, "E")
+  stop(e)
+}
+
+combis <- alldata %>%
+  dplyr::select(combi) %>%
+  dplyr::distinct()
+
+message(paste(combis %>% dplyr::pull(combi), collapse = "\n"))
+combis <- combis %>%
+  bind_cols(tidyr::separate(combis,
+                     col = "combi",
+                     into = c("ana", "qc", "comp"),
+                     sep = "---")) %>%
+  arrange(ana, comp, qc)
+
+#// CREATE WIDGETS
+#==================
+
+plot_widgets <- list()
+write_db_log("creating widgets", "P")
+
+for (i in 1:nrow(combis)) {
+  #prepare data
+  pltly <-  plotdata <- htmldata <- NULL
+  comb <- combis$combi[i]
+  subtitle = paste("\n",paste0("analyse:   ", combis$ana[i]),
+                paste0("qc sample: ", combis$qc[i]),
+                paste0("component: ",combis$comp[i]),
+                sep = " ")
+  plotdata <- alldata %>% dplyr::filter(combi == comb)
+  htmldata <- elc_htmldata(plotdata)
+  message(comb, ": ", "records: " , nrow(plotdata))
+
+  #create plot
+  pltly <- ELC_shewhart_plot(subdata = htmldata[["plot"]],
+                         interactive = TRUE,
+                         title = subtitle,
+                         fig_height = fig_height)
+  plot_widgets[[comb]][["fig"]] <- pltly
+
+  #create tables
+  plot_widgets[[comb]][["smry"]] <- DT::datatable(htmldata[['summary']])
+  plot_widgets[[comb]][["data"]] <- DT::datatable(htmldata[['tabel']])
+  plot_widgets[[comb]][["out3s"]] <- DT::datatable(htmldata[['out3s']])
+}
+write_db_log("widgets created, start creating html", "P")
+
+
+#// CREATE HTML
+#=================
+
+# Create placeholder widget
+placeholder <- htmlwidgets::createWidget("html", list(), package = "htmlwidgets")
+
+# Initialize lists to hold TOC and content
+toc_items <- list()
+content_blocks <- list()
+
+# loop through widgets and add them to content blocks
+for (comb in names(plot_widgets)) {
+
+  ...
+  ...
+  ...
+  
+}
+
+# Wrap TOC
+toc_widget <- tags$ul(toc_items)
+
+# Assemble full layout
+layout <- tagList( ... )
+
+write_db_log("widgets saved in content blocks", "P")
+
+# Combine and save
+e <- try(output <- htmlwidgets::prependContent(placeholder, layout))
+if (inherits(e, "try-error")) {
+  write_db_log(e, "E")
+  stop(e)
+}
+
+e <- try(save_report_widget(output, filename = htmlfile))
+if (inherits(e, "try-error")) {
+  write_db_log(e, "E")
+  stop(e)
+}
+
+write_db_log("QC charts saved in html", "C")
+
+### html tonen
+shell.exec(htmlfile)
+
+```
+
+

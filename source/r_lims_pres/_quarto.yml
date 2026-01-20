@@ -12,7 +12,7 @@ project:
   post-render: _extensions/inbo/flandersqmd-book/filters/post_render.R
 execute:
   echo: false
-  warnings: true
+  warnings: false
   errors: true
   message: true
   freeze: auto
