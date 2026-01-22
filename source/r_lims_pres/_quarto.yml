@@ -19,11 +19,13 @@ execute:
   cache: false
 format:
   flandersqmd-book-html: default
+  flandersqmd-book-pdf: default
 lang: nl-BE
 flandersqmd:
   coverdescription: Gemini cover op basis van prompt "maak een foto waar R logo's in erlemeyers vloeien in het kader van het gebruik van R in een lims systeem"
   entity: INBO
   level: 2
+  reportnr: 000
   title: Gebruik van R samen met Lims
   subtitle: Technische informatie
   shorttitle: presentatie-r-lims

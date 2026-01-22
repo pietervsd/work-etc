@@ -3,3 +3,5 @@ cover*
 _freeze/
 .quarto/
 
+
+/.quarto/

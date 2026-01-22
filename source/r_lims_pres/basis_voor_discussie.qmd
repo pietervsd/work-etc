@@ -3,7 +3,16 @@
 ## Communicatie tussen systemen
 
 - Heeft er iemand andere ideeën voor dergelijke implementatie?
-- Hoe Auth vermijden bij google sheets en keyring?
+- Hoe 0Auth vermijden bij google sheets en keyring?
 - Ziet er iemand gevaren in deze manier van werken?
 
 ## Onderhoud als ik weg zou vallen
+
+- Voorlopig ben ik de enige met het totaaloverzicht rond de programmatie
+    - Gerrit kent de lims implementatie vrij goed
+    - Jo kent alles van de databank en de webservice
+    - BMK begrijpt R
+    - Systeem vrij gewijzigd door ons en niet door Labware
+        - dure consultancy
+        - het gevoel dat die ook het systeem niet volledig kennen
+

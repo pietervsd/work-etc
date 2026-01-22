@@ -1,4 +1,4 @@
-# Inleiding
+# Situering
 
 ## Wat is LIMS
 
@@ -15,10 +15,28 @@
         - Grafische Interface
         - Coderen in een Basic code dialect "Lims Basic"
     - database volledig in onze handen (SQL Server)
+    
+## 2 verschillende systemen
+
+- Wordt gebruikt door Genetisch en Analytisch labo
+- werking in Lims helemaal anders
+    - Gendiv:
+        - Vooral registratie van stalen en status analyse
+        - Maken van platen
+        - Exportfiles voor toestellen
+        - Budgetteringsrapporten
+        - Vrij star
+    - Analystisch labo
+        - Kern om resultaten te bewaren
+        - Aanmaken export en importfiles voor meettoestellen
+        - Kwaliteitscontrole
+        - Nog veel postverwerking in google sheets
+        - Zeer dynamisch
 
 
 ```{r fig-limsdiagram}
 #| fig-cap: 'Overzicht hoofdcomponenten laboflow'
+#| warning: false 
 library(DiagrammeR)
 library(DiagrammeRsvg)
 
@@ -104,8 +122,9 @@ knitr::include_graphics("media/flowchart_lims.png")
     - Beperkte set aan stringfuncties
 - Er moet heel veel geconfigureerd worden om alles naar zin te krijgen
 - Gebruik crystal reports vermijden
-    - Rapportagetool waar een kost aan vast hangt
+    - Rapportagetool die lims gebruikt maar waar een kost aan vast hangt
     - niet open
+    - niet heel flexibel
 - R is gemaakt om met data om te gaan:
     - Rechtsreeks gebruik van datasets
     - Grote berekeningtoolkit
@@ -115,7 +134,7 @@ knitr::include_graphics("media/flowchart_lims.png")
     - privaat inbo/inbolimsintern package
 - Vertrouwdheid met R
 
-## Waarvoor gebruikt
+## Use cases
 
 ### Import gegevens
 
@@ -124,20 +143,29 @@ knitr::include_graphics("media/lims-mainscreen.png")
 
 ```
 
-- De laboranten zetten alle importfiles in een globale map
+- De laboranten zetten alle importfiles in 1 globale map _SCHEDULER
 - De R routine zal al de files ophalen en parsen naar een tsv formaat
+    - lims kan die gewoon rij per rij doorlopen en inlezen
 - De verwerkte files worden in de juiste map gezet (specifieke batch)
 - De stalen worden door standaard lims 1 per 1 verwerkt
+    - via scheduler
+    - nu eerder manuele trigger want iedereen wil direct resultaten
+        - zal alle klaarstaande files per labo inlezen
     - Kan ook rechtstreeks via R, maar niet aangeraden
-    - De lims routines passen verschillende tabellen tegelijk aan
-    - De lims routines zorgen voor de historiek in auditeringstabellen
+        - De lims routines passen verschillende tabellen tegelijk aan
+        - De lims routines zorgen voor de historiek in auditeringstabellen
 
 ### Kwaliteit
 
 - Controlekaarten
-    - Voor de laatste 30 punten voor analyse in actieve batch
+    - R genereert figuren als html rapport zichtbaar in lims
     - gegenereerd met 1 druk op de knop
-    - R berekent heel wat statistieken en genereert interactieve figuren
+    - realtime:
+        - Continu gebruikt in labo
+        - 30 laatste punten voor analyse in actieve batch
+    - periode:
+        - jaarlijkse analyse van controlestalen
+        - R berekent  wat statistieken
 
 ```{r fig-limsqcchart}
 knitr::include_graphics("media/lims-controlekaart.png")
@@ -156,8 +184,7 @@ knitr::include_graphics("media/lims-ionenbalans.png")
 ```
 
 
-- Periodieke analyses
-    - Evaluatie van controlekaartgrenzen
+- Periodieke analyses duplostalen
     - Resultaatoverzichten
     - Statistische evaluatie duplostalen
         - Deze worden via een template in Gsheets verder verwerkt 
@@ -175,8 +202,9 @@ DT::datatable(df_dup |> dplyr::slice(29:38))
 
 ### Platen genetica
 
-- Randomiseren van stalen op platen 
-- Visualiseren van platen met extra informatie
+- random duplostalen aanwijzen
+- Randomiseren en herhalen van stalen op platen
+- Visualiseren van platen als worksheets
 
 ```{r fig-limsplatelayout}
 knitr::include_graphics("media/lims-platelayout.png")
@@ -193,11 +221,23 @@ knitr::include_graphics("media/lims-platelayout.png")
 
 ### Data management en onderzoek
 
-- Speciale overzichtsaanvragen van klanten
+- Speciale overzichtsaanvragen van klanten of het labo zelf
 - Scripts voor bulk correcties
-- Workaround voor archieflabels te printen
+
+
+### printen archieflabels
+
+- archieflabels bevatten informatie ook buiten lims
+- R script die een access databank invult
+- Access rapportje die in labelprinter kan geprint worden
+- Hopelijk in de toekomst eeen meer directe manier
 
 ### Rapportage naar wetenschappers
 
+- inbolims package ipv inbolimsintern
 - Gebeurt via het datawarehouse
-- Specifiek R package hiervoor: inbo/inbolims op github
+- voorlopig vrij beperkt, de kern staat er en is bruikbaar
+- Use cases
+    - analyserapporten
+    - lims gegevens klaarzetten voor ander databankformaat (milklim)
+    - scripts voor specifieke herhaalde datavragen los van rapportage

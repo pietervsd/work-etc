@@ -17,13 +17,13 @@
     - INBOLIMS
         - publieke github repository  inbo/inbolims
         - Communicatie tussen LIMS DWH en wetenschapper
-- Gebeurt via shell commands op de achtergrond
-- R gaat NIET zelf resultaten wegschrijven naar LIMS tabellen
-    - R kan data schrijven naar custom tabellen C_
-    - De gegevens hieruit kunnen de lims-functies dan gebruiken om de offici"ele tabellen te vullen
+- Gebeurt via shell commands op de achtergrond in lims
+- R gaat (doorgaans) NIET zelf resultaten wegschrijven naar Labware LIMS tabellen
+    - R schrijft naar custom tabellen C_
+    - De gegevens hieruit kunnen de lims-functies dan gebruiken om de officiële tabellen te vullen
     - De lims functies voorzien immers functionaliteit die ingewikkeld kan worden:
         - Er worden veel meer tabellen geaffecteerd
-            - De databank is immers niet volledig genormeerd 
+            - De databank is ook niet volledig genormeerd 
         - Datums en statussen worden herberekend
         - Automatisatieroutines en event triggers kunnen lopen
         - De auditor kan de historiek bijhouden
@@ -178,6 +178,7 @@ graph TD
     I -- "NOK" --> K
     J --> L
     K --> L
+    L --> M
 
     %% --- DE ZIJSTAPPEN ---
     %% We groeperen ze in een subgraph zonder achtergrondkleur
@@ -204,8 +205,10 @@ graph TD
 
 ### Codevoorbeeld
 
-```vba
-'**************************************************************************
+```{r limscodevoorbeeld}
+#| eval: false
+#| echo: true
+"'**************************************************************************
 '** Subroutine = "MN_BM_QC_QC_CHARTS"
 '** Doelstelling: Maak controlekaarten op basis van de huidige batch of via een visuele workflow
 '** Werkwijze: maak een query en exportlocaties aan, schrijf de query weg als sql bestand. Laat R de controlekaartroutine uitvoeren
@@ -220,7 +223,8 @@ graph TD
 '**************************************************************************
 
 
-'# INIT
+'"
+# INIT
 productkeuze = EMPTY
 analysisName = EMPTY
 
@@ -231,9 +235,9 @@ dbuid = GetConstant("DBUID")
 dbpwd = GetConstant("DBPWD")
 batchName = SELECT BATCH.NAME
 
-IF (IsEmpty(batchName) OR (enteredfromQCvwf = "T")) THEN'enteredfromQCvwf comes from VWF_QC_CTR_REALTIME
+IF (IsEmpty(batchName) OR (enteredfromQCvwf = "T")) THEN 'enteredfromQCvwf comes from VWF_QC_CTR_REALTIME'
 	detailedselection = TRUE
-	'Haal de analyse op uit de volledige lijst van actieve analyses"
+	'Haal de analyse op uit de volledige lijst van actieve analyses"'
 	status = ClearArray("productarray")
 	productarray[1] = "VAST"
 	productarray[2] = "WATER"
@@ -260,7 +264,7 @@ IF (IsEmpty(batchName) OR (enteredfromQCvwf = "T")) THEN'enteredfromQCvwf comes 
 	maxpoints = PromptForInteger(0, 200, 30, "Maximaal hoeveel punten in de kaart?")
 ELSE 
 	detailedselection = FALSE
-	'## Haal de bachanalyse op
+	'## Haal de bachanalyse op'
 	q3 = "select  TOP(1) ANALYSIS from TEST where TEST.BATCH = '" + batchName + "'"
 	status = SQL(q3, "analysisArray")
 	analysisName = analysisArray[1,1]
@@ -268,7 +272,7 @@ ELSE
 	earliest = OdbcDateTimeStamp(DateAdd(latest, -1461))
 	latest = OdbcDateTimeStamp(latest)
 	
-	'## Haal de componenten op (C_QC moet op TRUE staan)
+	'## Haal de componenten op (C_QC moet op TRUE staan)'
 	q = "select REPLACE(r.NAME, NCHAR(0x00B5), N'u') as NAME from test t"
 	q = q + " inner join sample s on t.sample_number = s.sample_number"
 	q = q + " inner join result r on r.TEST_NUMBER = t.TEST_NUMBER"
@@ -286,43 +290,44 @@ ELSE
 	maxpoints = 30
 ENDIF
 
-'## Selecteer compomenten
+'## Selecteer compomenten'
 numSelections = MultiSelectFromArray(compListArray, "Welke componenten?", "compSelectArray", "T")
 IF (numSelections = 0) THEN
 	MsgBox("Geen componenten geselecteerd. Routine stopt.")
 	RETURN
 ENDIF
 
-'## Componenten selecteren
+'## Componenten selecteren'
 compNames = "('" + ArrayToCSVString(compSelectArray, "','") + "')"
-Subroutine("FN_DATETIME_TXT")	'returns now en nowtxt
+Subroutine("FN_DATETIME_TXT")	'returns now en nowtxt'
 jaar = "20" + Left(nowtxt, 2)
 
-'## Definieren exportfiles
-exportdir = GetConstant("DEFAULTDIR_LAB_GENERIC") + "\LIMS\CTR_REALTIME\" + jaar + "\" + analysisName + "\"
+'## Definieren exportfiles'
+exportdir = GetConstant("DEFAULTDIR_LAB_GENERIC") + "\LIMS\CTR_REALTIME\\" + jaar + "\\" + analysisName + "\<"
 status = DirExists(exportdir)
 IF (status = FALSE) THEN
-	jaardir = GetConstant("DEFAULTDIR_LAB_GENERIC") + "\LIMS\CTR_REALTIME\" + jaar
+	jaardir = GetConstant("DEFAULTDIR_LAB_GENERIC") + "\LIMS\CTR_REALTIME\\" + jaar
 	IF (Not(DirExists(jaardir))) THEN
 		status = DirNew(jaardir)
 		IF (Not(status)) THEN
-			MsgBox("Kritieke fout: Zorg dat het pad " + GetConstant("DEFAULTDIR_LAB_GENERIC") + "\LIMS\CTR_REALTIME\" + " bestaat en schrijfrechten heeft. Routine stopt.")
+			MsgBox("Kritieke fout: Zorg dat het pad " + GetConstant("DEFAULTDIR_LAB_GENERIC") + "\LIMS\CTR_REALTIME\\" + " bestaat en schrijfrechten heeft. Routine stopt.")
 			RETURN
 		ENDIF
 	ENDIF
 	status = DirNew(exportdir)
 ENDIF
 
-'## creeren query die R zal uitvoeren om de data binnen te halen (wordt uitgevoerd door R, niet door lims)
+'## creeren query die R zal uitvoeren om de data binnen te halen (wordt uitgevoerd door R, niet door lims)'
+
 qn = "select s.SAMPLE_NUMBER, s.TEXT_ID, s.SAMPLE_TYPE, s.SAMPLE_NAME "
 qn = qn + ", bo.BATCH, bo.ORDER_NUMBER, r.ANALYSIS, REPLACE(r.NAME,NCHAR(0x00B5), N'u') as NAME, r.ENTRY, r.ENTERED_ON, r.UNITS "
-qn = qn + ", ps.C_CERTIFIED_VALUE, ps.C_CERTIFIED_SD, ps.C_CTR_X, ps.C_CTR_SD, ps.PRODUCT, ps.VERSION, b.C_DATE_BATCHRUN " ' toegevoegd 2022-11-23: , b.C_DATE_BATCHRUN
+qn = qn + ", ps.C_CERTIFIED_VALUE, ps.C_CERTIFIED_SD, ps.C_CTR_X, ps.C_CTR_SD, ps.PRODUCT, ps.VERSION, b.C_DATE_BATCHRUN " , b.C_DATE_BATCHRUN
 qn = qn + Chr(10) + " from result r "
 qn = qn + Chr(10) + " inner join test t on t.TEST_NUMBER = r.TEST_NUMBER"
 qn = qn + Chr(10) + " inner join sample s on s.SAMPLE_NUMBER = t.SAMPLE_NUMBER"
 qn = qn + Chr(10) + " inner join qc_samples qcs on qcs.NAME = s.SAMPLE_NAME"
 qn = qn + Chr(10) + " inner join batch_objects bo on bo.OBJECT_ID = t.TEST_NUMBER"
-qn = qn + Chr(10) + " inner join batch b on b.NAME = bo.BATCH" 'aanpassing 2022-11-23
+qn = qn + Chr(10) + " inner join batch b on b.NAME = bo.BATCH" 
 qn = qn + Chr(10) + " inner join (select name, max(version) as ProdVersion from PRODUCT group by NAME) tmp on tmp.NAME = s.PRODUCT"
 qn = qn + Chr(10) + " left join product_spec ps on ps.PRODUCT = s.PRODUCT and ps.VERSION = ProdVersion and s.PRODUCT_GRADE = ps.GRADE and ps.ANALYSIS = t.ANALYSIS and ps.COMPONENT = r.NAME"
 qn = qn + Chr(10) + " where t.ANALYSIS = '" + analysisName + "'"
@@ -342,7 +347,7 @@ htmlfile = exportdir + analysisName + "_" + nowtxt + "_cid_" + callid + "_" + US
 parameters = scriptfile + " " + dbodbc + " " + callid + " " + USER  'safer way without sending the db parameters
 
 
-'## Wegschrijven query als .SQL bestqnd
+'## Wegschrijven query als .SQL bestqnd'
 status = FileNew(qryfile, "F")
 status = FileOpen(qryfile)
 status = FileWrite(qryfile, qn, "T")
@@ -351,7 +356,7 @@ status = FileClose(qryfile)
 status = FileClose(qryfile)  '2 keer sluiten anders lijkt het niet te sluiten misschien dubbel geopend door flilenew, fileopen en filewrite?
 
 
-'## Add parameters in C_RSCRIPT_ARGS  en run on external R application
+'## Add parameters in C_RSCRIPT_ARGS  en run on external R application'
 sqlcode1 = "INSERT INTO C_RSCRIPT_ARGS (CALL_ID, CALL_FUN, ARG_NAME, VALUE) values(" + callid + ", 'ELC_QC_CHART', 'SQL_FILE', '" + qryfile + "')"
 sqlcode2 = "INSERT INTO C_RSCRIPT_ARGS (CALL_ID, CALL_FUN, ARG_NAME, VALUE) values(" + callid + ", 'ELC_QC_CHART', 'HTML_FILE', '" + htmlfile + "')"
 sqlcode3 = "INSERT INTO C_RSCRIPT_ARGS (CALL_ID, CALL_FUN, ARG_NAME, VALUE) values(" + callid + ", 'ELC_QC_CHART', 'USER', '" + USER + "')"
@@ -364,7 +369,7 @@ status = SQL(sqlcode3, "emtpyArray")
 status = SQL(sqlcode4, "emtpyArray")
 status = SQL(sqlcode5, "emtpyArray")
 
-'start logging
+'#start logging'
 logmsg = "ELC QC Chart"
 Subroutine("FN_LOG_R_DB")
 
@@ -387,6 +392,40 @@ RETURN
 
 ### Schema
 
+```{mermaid}
+graph TD
+
+LIMS(["Lims routine"])
+RCOMM["Rscript<br/>args: scriptnaam, odbc, call_id, user"]
+LOAD["Laden tidyverse en inbolimsintern"]
+VGL["Vergelijk bestaande met nieuwe scripts en kopieer indien nodig"]
+SETUP["Setup environment"]
+VARS[/"conn</br>user_name</br>call_id<br/>params</br>env"/]
+STARTLOG["Start logging in C_RSCRIPT_LOG met status P"]
+PARAMS["params variabele uitpakken"]
+CORE["Voer kernroutine uit"]
+FINALIZE["Beëindig log met status C of E"]
+REPORTFILES[/"Rapportagefiles (meestal html)"/]
+LIMSDB[('Lims DB')]
+LIMS_SUB(["Ga verder met LIMS Routine"])
+
+LIMS --> RCOMM
+RCOMM --> LOAD
+LOAD --> VGL
+VGL --> SETUP
+SETUP -.-> VARS
+SETUP --> STARTLOG
+STARTLOG --> PARAMS
+PARAMS --> CORE
+CORE -.-> LIMSDB
+CORE --> FINALIZE
+CORE -.-> REPORTFILES
+
+FINALIZE --> LIMS_SUB
+
+
+```
+
 
 - Rscript wordt vanuit Lims gerund met parameters:
     - scriptnaam
@@ -395,7 +434,7 @@ RETURN
     - lims-gebruiker
 - De scripts staan in de inst-map van het package onder lims_scripts
     - bij het laden van Rscript worden de hashes vergeleken met de scripts in de lims directory
-    - indien anders, worden de bestaande gebackupped en de nieuwe er geplaatst
+    - indien anders, worden de bestaande gebackupt en de nieuwe er geplaatst
 - Structuur van het Rscript
   - tidyverse en inbolimsintern worden geladen
   - setupfunctie wordt gelopen (r_session_setup(commandArgs))
@@ -423,11 +462,25 @@ RETURN
 De flow is misschien nog altijd niet ideaal, maar al veel beter dan vroeger:
 
 - Alle scripts werken nu op een gestandaardiseerde manier
-- Ieder script deed een aparte setup
+    - vroeger tekstuele logging
+    - vroeger werkte iedere routine een klein beetje anders
 - Het db passwoord en gebruikersnaam staan nu in een .Renviron
     - Vroeger werd dat met iedere request doorgezonden
     - .Renviron is nog niet ge-encrypteerd maar is bitgecodeerd
         - Ik zie voorlopig geen andere manier zonder gebruikersinteractie
+- derde volledig nieuwe iteratie
+    - versie 1: proof of concept
+        - alles volledig via files, geen db sturing
+    - versie 2:
+        - github
+        - organische groei
+        - alles een beetje anders
+        - communicatie via db parameters
+        - plain html rapporten
+    - versie 3 (vanaf lims 8)
+        - omgeving-onafhankelijk: scripts werken op dev, uat en prd
+        - logging via db en terugkoppeling naar gebruiker
+        - introductie  pandoc, css en javascript
 
 
 ### Codevoorbeeld

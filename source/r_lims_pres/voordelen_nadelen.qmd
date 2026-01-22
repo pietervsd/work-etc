@@ -4,22 +4,51 @@
 
 ### Meer in eigen handen
 
+- Onafhankelijk van wat Labware aanbiedt
+- Eigen versiebeheer
+- Volledig transparant
+- Flexibel inspelen op nieuwe use cases
+
+### Meer mogelijkheden
+
+- Hoewel alles in principe in Lims Basic kan:
+    - R is een high-level language met veel ingebouwde functionaliteit
+    - R maakt met data en strings werken heel gemakkelijk
+    - R laden kost 2 seconden tijd, maar werkt snel en betrouwbaar
+        - Lims basic komt soms in geheugenproblemen
+
 
 ## Nadelen
 
-### Workaround
+### Het is een Workaround
 
+- Nog geen rechtstreekse integratie tussen Labware en R
+    - Ze zijn er wel mee bezig
+    - Nog geen concreet zicht op hoever dit gaat
 - Communicatie R en LIMS
-    - Enkel via tabellen en files, geen rechtstreekse interface
-    - Omzeilen Labware veiligheden
-- Wat indien shellCommand niet meer kan
+    - Enkel via tabellen en csvfiles en html rapporten, geen rechtstreekse interface
+    - Omzeilen mogelijk van Labware veiligheden (data integriteit)
+- Wat indien shellCommand niet meer werkt
     - bij upgrade labware8 al problemen
+
+### Upgrade Lims zorgt voor iets andere werking met R
+
+- enkele functionaliteiten gewijzigd
+    - geen `;` meer toegelaten in sql statements
+- Webversie kan geen ShellCommand gebruiken
+    - Gelukkig een andere methode om R aan te roepen
+    - `isWeb()` om webomgeving te detecteren
+    - Voorlopig enkel mogelijk om self-contained html rapporten in Lims te brengen
 
 ### Debuggen
 
-- Kennis R en labware nodig
-- Voorlopig geen echte backup
+- Methode vergt wat "framework"-code
+    - Naar timings geen probleem
+    - Intussen al gegroeid naar een veel meer gestandaardiseerde aanpak
+- Kennis van zowel R en labware Basic nodig
+- Voorlopig geen echte backup voor mij
 
-### Extra code
 
 ### Geen customer support
+
+- Labware is wel bezig met integratie van R
